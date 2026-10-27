@@ -1,0 +1,36 @@
+{
+  "name": "@workspace/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "solid-js": "^1.8.17",
+    "@solidjs/router": "^0.13.4",
+    "yjs": "^13.6.15",
+    "@hocuspocus/provider": "^2.13.5",
+    "y-indexeddb": "^9.0.12",
+    "y-prosemirror": "^1.2.12",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-view": "^1.33.6",
+    "prosemirror-model": "^1.21.1",
+    "prosemirror-schema-basic": "^1.2.2",
+    "prosemirror-example-setup": "^1.2.3",
+    "prosemirror-keymap": "^1.2.2",
+    "livekit-client": "^2.5.4"
+  },
+  "devDependencies": {
+    "vite": "^5.3.3",
+    "vite-plugin-solid": "^2.10.2",
+    "typescript": "^5.5.3",
+    "@types/node": "^20.14.10",
+    "vitest": "^1.6.0",
+    "@testing-library/jest-dom": "^6.4.6",
+    "jsdom": "^24.1.0"
+  }
+}

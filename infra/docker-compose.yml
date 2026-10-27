@@ -1,0 +1,49 @@
+# Backing services for local development and for running the test/benchmark
+# suites in docs/TESTING.md and docs/BENCHMARKS.md. Application processes
+# (apps/api, apps/sync, apps/web) are run natively via pnpm/go for fast
+# iteration — see each app's Dockerfile for production container builds, and
+# docker-compose.prod.yml (documented in docs/DEPLOYMENT.md) for a full stack.
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: workspace
+      POSTGRES_PASSWORD: workspace
+      POSTGRES_DB: workspace
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workspace"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6390:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # Self-hosted LiveKit SFU for "Integrated Voice & Video Calls" (huddles) and
+  # screen sharing. Optional for the rest of the stack — apps/web's Huddle
+  # component degrades gracefully if this isn't running / LIVEKIT_URL is unset.
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880" # HTTP/WS signaling
+      - "7881:7881" # TCP fallback
+      - "50000-50100:50000-50100/udp" # RTP media range
+    environment:
+      LIVEKIT_KEYS: "devkey: devsecret"
+
+volumes:
+  pg-data:

@@ -1,0 +1,242 @@
+// Primary ACID data store: identities, workspace hierarchy, RBAC, chat metadata,
+// tasks/calendar, and periodic binary CRDT snapshots (the Yjs document state).
+// Hot-path realtime data (live cursors, presence, in-flight CRDT updates) never
+// touches this schema directly — it lives in memory/Redis and is write-behind
+// debounced into `DocumentSnapshot` by the sync engine (see apps/sync).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  GUEST
+}
+
+enum PermissionLevel {
+  VIEW
+  COMMENT
+  EDIT
+}
+
+enum ChannelKind {
+  CHANNEL
+  DM
+}
+
+enum DocumentKind {
+  RICH_TEXT
+  WHITEBOARD
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships       WorkspaceMember[]
+  messages          Message[]
+  tasksAssigned     Task[]             @relation("TaskAssignee")
+  tasksCreated      Task[]             @relation("TaskCreator")
+  calendarEvents    CalendarEvent[]
+  refreshTokens     RefreshToken[]
+  guestLinksCreated GuestLink[]
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  WorkspaceMember[]
+  channels Channel[]
+  tasks    Task[]
+  events   CalendarEvent[]
+  documents Document[]
+  guestLinks GuestLink[]
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Channel {
+  id          String      @id @default(uuid())
+  workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  kind        ChannelKind @default(CHANNEL)
+  isPrivate   Boolean     @default(false)
+  parentId    String?
+  parent      Channel?    @relation("ChannelNesting", fields: [parentId], references: [id])
+  children    Channel[]   @relation("ChannelNesting")
+  createdAt   DateTime    @default(now())
+
+  messages  Message[]
+  documents Document[]
+
+  @@index([workspaceId])
+  @@index([parentId])
+}
+
+model Message {
+  id         String    @id @default(uuid())
+  channelId  String
+  channel    Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+  body       String
+  richBody   Json?
+  threadRootId String?
+  threadRoot Message?  @relation("ThreadReplies", fields: [threadRootId], references: [id])
+  replies    Message[] @relation("ThreadReplies")
+  attachments Attachment[]
+  editedAt   DateTime?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([channelId, createdAt])
+  @@index([threadRootId])
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  url       String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
+}
+
+// A collaborative surface (rich-text doc or whiteboard). The live CRDT state is
+// held in memory by apps/sync; this row + DocumentSnapshot is the durable record.
+model Document {
+  id          String       @id @default(uuid())
+  workspaceId String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channelId   String?
+  channel     Channel?     @relation(fields: [channelId], references: [id])
+  kind        DocumentKind @default(RICH_TEXT)
+  title       String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  snapshots DocumentSnapshot[]
+
+  @@index([workspaceId])
+}
+
+// Compressed binary Yjs snapshot, written by the sync engine's debounced
+// write-behind strategy (every 10s of activity, or on last-client-disconnect).
+model DocumentSnapshot {
+  id          String   @id @default(uuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  state       Bytes
+  sizeBytes   Int
+  vectorClock Bytes
+  createdAt   DateTime @default(now())
+
+  @@index([documentId, createdAt])
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  dueAt       DateTime?
+  assigneeId  String?
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creatorId   String
+  creator     User       @relation("TaskCreator", fields: [creatorId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([assigneeId])
+}
+
+model CalendarEvent {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime
+  organizerId String
+  organizer   User      @relation(fields: [organizerId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, startsAt])
+}
+
+enum GuestLinkPermission {
+  VIEW
+  COMMENT
+  EDIT
+}
+
+model GuestLink {
+  id          String              @id @default(uuid())
+  workspaceId String
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  token       String              @unique
+  permission  GuestLinkPermission @default(VIEW)
+  createdById String
+  createdBy   User                @relation(fields: [createdById], references: [id])
+  expiresAt   DateTime?
+  createdAt   DateTime            @default(now())
+
+  @@index([workspaceId])
+}

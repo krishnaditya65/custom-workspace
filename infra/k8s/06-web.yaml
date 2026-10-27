@@ -1,0 +1,54 @@
+# apps/web - static SPA served by nginx. Fully stateless, scales trivially.
+# Remember VITE_API_URL/VITE_WS_URL/VITE_LIVEKIT_URL are baked in at image
+# build time (docker build --build-arg, see apps/web/Dockerfile and
+# docs/DEPLOYMENT.md) - there is nothing to configure here at runtime.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: custom-workspace
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: custom-workspace/web:REPLACE-ME
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: custom-workspace
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 80

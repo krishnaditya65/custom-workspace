@@ -1,0 +1,91 @@
+# apps/api - stateless GraphQL API, safe to run as N replicas behind a
+# normal (non-sticky) Service, provided REDIS_URL is reachable (see
+# docs/DEPLOYMENT.md "Horizontal scaling"). Replace `image:` with your built
+# tag (see docs/DEPLOYMENT.md "Images") before applying.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: custom-workspace
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: custom-workspace/api:REPLACE-ME
+          ports:
+            - containerPort: 4000
+          env:
+            - name: PORT
+              value: "4000"
+            - name: NODE_ENV
+              value: production
+            - name: CORS_ORIGIN
+              value: "https://REPLACE-ME.example.com"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: JWT_ACCESS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: workspace-jwt-secret
+                  key: JWT_ACCESS_SECRET
+            # Authenticates apps/sync's POST /internal/sessions/verify calls
+            # (x-internal-secret header) - see internal/internal-service.guard.ts.
+            - name: INTERNAL_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: workspace-internal-secret
+                  key: INTERNAL_SERVICE_SECRET
+            - name: JWT_REFRESH_PEPPER
+              valueFrom:
+                secretKeyRef:
+                  name: workspace-api-secret
+                  key: JWT_REFRESH_PEPPER
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: workspace-postgres-secret
+                  key: DATABASE_URL
+          # GET /health always returns HTTP 200 (degraded dependencies are
+          # reported in the JSON body, not via status code - see
+          # docs/ARCHITECTURE.md) - these probes only catch a wedged/dead
+          # process, by design. Alert on the body's `status` field
+          # separately if you need dependency-down alerting.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: custom-workspace
+spec:
+  selector:
+    app: api
+  ports:
+    - name: http
+      port: 4000
+      targetPort: 4000

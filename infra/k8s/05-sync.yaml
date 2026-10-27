@@ -1,0 +1,95 @@
+# apps/sync - the Go CRDT relay. Each pod holds per-room in-memory state, so
+# the Service uses ClientIP session affinity so a given client keeps hitting
+# the same pod for the lifetime of its WebSocket connection (a fresh TCP
+# connection is what session affinity keys off; it does not "migrate" an
+# established WebSocket - see docs/DEPLOYMENT.md "Horizontal scaling" for
+# why this matters and what it does/doesn't buy you on top of the Redis
+# cross-replica fan-out). REDIS_URL must be reachable at container startup
+# for multi-replica correctness, not just availability - see
+# docs/ARCHITECTURE.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sync
+  namespace: custom-workspace
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sync
+  template:
+    metadata:
+      labels:
+        app: sync
+    spec:
+      containers:
+        - name: sync
+          image: custom-workspace/sync:REPLACE-ME
+          ports:
+            - containerPort: 1234
+          env:
+            - name: PORT
+              value: "1234"
+            - name: SNAPSHOT_DEBOUNCE_MS
+              value: "10000"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            # Unset -> defaults to <hostname>-<pid>; the pod name (unique
+            # per replica) already gives a stable, human-readable default
+            # via the downward API, so this is set explicitly rather than
+            # left to Go's <hostname>-<pid> fallback.
+            - name: INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # apps/sync no longer verifies JWTs itself - it calls apps/api's
+            # POST /internal/sessions/verify on every new connection instead
+            # (see internal/sessionsclient). apps/api is the single source of
+            # truth for session validity and effective RBAC permission.
+            - name: API_BASE_URL
+              value: "http://api:4000"
+            - name: INTERNAL_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: workspace-internal-secret
+                  key: INTERNAL_SERVICE_SECRET
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: workspace-postgres-secret
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 1234
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 1234
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 250m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sync
+  namespace: custom-workspace
+spec:
+  selector:
+    app: sync
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800 # 3h - comfortably longer than a normal editing session
+  ports:
+    - name: ws
+      port: 1234
+      targetPort: 1234

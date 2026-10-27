@@ -1,0 +1,575 @@
+/* -----------------------------------------------------------------------
+   app.css - clean, minimal, framework-free styling.
+
+   No CSS framework/reset library: this app's UI surface is small enough
+   that a hand-rolled stylesheet stays easier to reason about than pulling
+   in Tailwind/etc. Layout is flexbox throughout, per the task brief.
+   ----------------------------------------------------------------------- */
+
+:root {
+  --color-bg: #ffffff;
+  --color-bg-muted: #f5f6f8;
+  --color-border: #e2e4e9;
+  --color-text: #1a1d23;
+  --color-text-muted: #6b7280;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-danger: #dc2626;
+  --radius: 6px;
+  --sidebar-width: 240px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+}
+
+button:hover {
+  border-color: var(--color-primary);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+a {
+  color: var(--color-primary);
+}
+
+/* ---------------- Auth pages ---------------- */
+
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 320px;
+  padding: 24px;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.auth-form__error {
+  color: var(--color-danger);
+  font-size: 0.875rem;
+}
+
+/* ---------------- Home ---------------- */
+
+.home-page {
+  max-width: 480px;
+  margin: 48px auto;
+  padding: 0 16px;
+}
+
+.home-page__list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-page__new {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.home-page__error {
+  color: var(--color-danger);
+}
+
+/* ---------------- Workspace shell ---------------- */
+
+.workspace-shell {
+  display: flex;
+  height: 100%;
+}
+
+.workspace-shell__sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--color-bg);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 12px;
+}
+
+.workspace-shell__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.workspace-shell__channels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.workspace-shell__channel-link {
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.workspace-shell__channel-link:hover {
+  background: var(--color-bg-muted);
+}
+
+.workspace-shell__channel-link--active {
+  background: var(--color-bg-muted);
+  font-weight: 600;
+}
+
+.workspace-shell__new-channel {
+  display: flex;
+  gap: 4px;
+}
+
+.workspace-shell__new-channel input {
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-shell__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+}
+
+.workspace-shell__error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+.workspace-shell__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------- Channel view ---------------- */
+
+.channel-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.channel-view__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.channel-view__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.channel-view__body > * {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ---------------- Chat ---------------- */
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-message {
+  max-width: 640px;
+}
+
+.chat-message--pending {
+  opacity: 0.6;
+}
+
+.chat-message__author {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.chat-message__body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-message__time {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.chat-status {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.chat-status--error {
+  color: var(--color-danger);
+}
+
+.chat-composer {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.chat-composer input {
+  flex: 1;
+}
+
+/* ---------------- Collab editor ---------------- */
+
+.collab-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.collab-editor__presence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.presence-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collab-editor__status {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.collab-editor__surface {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.collab-editor__surface .ProseMirror {
+  outline: none;
+  min-height: 100%;
+}
+
+.collab-cursor {
+  border-left: 2px solid;
+  position: relative;
+}
+
+.collab-cursor__label {
+  position: absolute;
+  top: -1.2em;
+  font-size: 0.65rem;
+  color: white;
+  padding: 0 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.cursor-chat-bubble {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: var(--color-bg);
+  border: 1px solid;
+  border-radius: 12px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.cursor-chat-input {
+  position: absolute;
+  z-index: 10;
+}
+
+.cursor-chat-input input {
+  min-width: 220px;
+}
+
+/* ---------------- Whiteboard ---------------- */
+
+.whiteboard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.whiteboard__toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.whiteboard__surface {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-bg-muted),
+    var(--color-bg-muted) 10px,
+    var(--color-bg) 10px,
+    var(--color-bg) 20px
+  );
+}
+
+.whiteboard__surface canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.whiteboard__remote-cursor {
+  position: absolute;
+  transform: translate(-2px, -2px);
+  border: 2px solid;
+  border-radius: 50%;
+  width: 8px;
+  height: 8px;
+  font-size: 0.65rem;
+  padding-left: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------------- Huddle ---------------- */
+
+.huddle {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.huddle__unconfigured {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.huddle__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.huddle__error {
+  color: var(--color-danger);
+}
+
+.huddle__media {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.huddle__media video {
+  width: 200px;
+  border-radius: var(--radius);
+  background: black;
+}
+
+.huddle__participants {
+  list-style: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+/* ---------------- Tasks & Calendar ---------------- */
+
+.task-list,
+.calendar-view {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.task-list__composer,
+.calendar-view__composer {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.task-list__items {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}
+
+.task-list__title {
+  flex: 1;
+}
+
+.task-list__due {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.task-list__status,
+.calendar-view__status {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.task-list__status--error,
+.calendar-view__status--error {
+  color: var(--color-danger);
+}
+
+.calendar-view__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.calendar-view__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.calendar-view__day {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-view__day-header {
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.calendar-view__day-events {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.calendar-view__event {
+  background: var(--color-bg-muted);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+}
+
+.calendar-view__event-time {
+  color: var(--color-text-muted);
+}

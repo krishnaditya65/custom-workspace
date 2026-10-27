@@ -1,0 +1,95 @@
+# Production-shaped single-host stack: builds and runs apps/api, apps/sync,
+# and apps/web from their own Dockerfiles alongside the backing services
+# defined in docker-compose.yml. Additive, not standalone - always run
+# together with the base file:
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
+#
+# See docs/DEPLOYMENT.md for required secrets, migration steps, and why this
+# is a single-host story (no sticky routing / true horizontal scale-out -
+# use infra/k8s/ for that).
+#
+# Before first run:
+#   1. Copy this file's env vars into a real `.env` next to it (or export
+#      them) - the placeholder secrets below MUST be replaced.
+#   2. Run migrations against the `postgres` service from docker-compose.yml:
+#        pnpm prisma:migrate
+version: "3.9"
+
+x-shared-secrets: &shared-secrets
+  # MUST be byte-identical between api and sync - sync calls api's
+  # POST /internal/sessions/verify (authenticated via this header secret)
+  # instead of verifying access tokens itself. Generate with
+  # `openssl rand -hex 32`; never use this placeholder outside local
+  # smoke-testing.
+  INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:-change-me-internal-service-secret}
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    image: custom-workspace/api:${TAG:-local}
+    environment:
+      <<: *shared-secrets
+      DATABASE_URL: postgresql://workspace:workspace@postgres:5432/workspace?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-access-secret}
+      JWT_REFRESH_PEPPER: ${JWT_REFRESH_PEPPER:-change-me-refresh-pepper}
+      PORT: "4000"
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      NODE_ENV: production
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  sync:
+    build:
+      context: ..
+      dockerfile: apps/sync/Dockerfile
+    image: custom-workspace/sync:${TAG:-local}
+    environment:
+      <<: *shared-secrets
+      DATABASE_URL: postgresql://workspace:workspace@postgres:5432/workspace?schema=public
+      REDIS_URL: redis://redis:6379
+      API_BASE_URL: http://api:4000
+      PORT: "1234"
+      SNAPSHOT_DEBOUNCE_MS: "10000"
+      # Unset -> defaults to <hostname>-<pid>, which is already unique per
+      # container; only needed if you want a stable, human-readable id.
+      INSTANCE_ID: ${SYNC_INSTANCE_ID:-}
+    ports:
+      - "1234:1234"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:1234}
+        VITE_LIVEKIT_URL: ${VITE_LIVEKIT_URL:-}
+    image: custom-workspace/web:${TAG:-local}
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped

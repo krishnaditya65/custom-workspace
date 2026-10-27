@@ -1,0 +1,73 @@
+# In-cluster Postgres for environments without a managed database (demo /
+# staging). For real production use, point every service's DATABASE_URL at
+# a managed Postgres instead and don't apply this file - see
+# docs/DEPLOYMENT.md "Kubernetes". Single replica only: Postgres itself
+# isn't horizontally scaled here (no replication/failover setup) - this is
+# a StatefulSet for stable storage/identity, not for scale-out.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: custom-workspace
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: workspace-postgres-secret
+          volumeMounts:
+            - name: pg-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "workspace"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "workspace"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: pg-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: custom-workspace
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  # Headless: StatefulSet pods are addressed individually; with one replica
+  # this is equivalent to a normal ClusterIP for DNS purposes but is the
+  # conventional pairing for a StatefulSet's governing service.
+  clusterIP: None

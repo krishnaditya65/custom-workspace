@@ -1,0 +1,247 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+input AssignTaskInput {
+  assigneeId: ID!
+  taskId: ID!
+}
+
+type AuthPayload {
+  accessToken: String!
+  refreshToken: String!
+  user: UserType!
+}
+
+type CalendarEventType {
+  createdAt: DateTime!
+  description: String
+  endsAt: DateTime!
+  id: ID!
+  organizerId: ID!
+  startsAt: DateTime!
+  title: String!
+  workspaceId: ID!
+}
+
+enum ChannelKind {
+  CHANNEL
+  DM
+}
+
+type ChannelType {
+  children: [ChannelType!]
+  createdAt: DateTime!
+  id: ID!
+  isArchived: Boolean!
+  isPrivate: Boolean!
+  kind: ChannelKind!
+  name: String!
+  parentId: ID
+  workspaceId: ID!
+}
+
+input CreateChannelInput {
+  isPrivate: Boolean = false
+  name: String!
+  parentId: ID
+  workspaceId: ID!
+}
+
+input CreateEventInput {
+  description: String
+  endsAt: String!
+  startsAt: String!
+  title: String!
+  workspaceId: ID!
+}
+
+input CreateGuestLinkInput {
+  expiresAt: String
+  permission: GuestLinkPermission!
+  workspaceId: ID!
+}
+
+input CreateTaskInput {
+  assigneeId: ID
+  description: String
+  dueAt: String
+  title: String!
+  workspaceId: ID!
+}
+
+input CreateWorkspaceInput {
+  name: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+input EditMessageInput {
+  body: String!
+  messageId: ID!
+}
+
+enum GuestLinkPermission {
+  COMMENT
+  EDIT
+  VIEW
+}
+
+type GuestLinkType {
+  createdAt: DateTime!
+  expiresAt: DateTime
+  id: ID!
+  permission: GuestLinkPermission!
+  token: String!
+  workspaceId: ID!
+}
+
+input InviteMemberInput {
+  email: String!
+  role: WorkspaceRole!
+  workspaceId: ID!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type MessagePage {
+  hasMore: Boolean!
+  items: [MessageType!]!
+  nextCursor: ID
+}
+
+type MessageType {
+  author: UserType
+  body: String!
+  channelId: ID!
+  createdAt: DateTime!
+  deletedAt: DateTime
+  editedAt: DateTime
+  id: ID!
+  replyCount: Int!
+  threadRootId: ID
+}
+
+input MessagesQueryInput {
+  channelId: ID!
+  cursor: ID
+  limit: Int = 50
+}
+
+type Mutation {
+  archiveChannel(channelId: ID!): ChannelType!
+  assignTask(input: AssignTaskInput!): TaskType!
+  createChannel(input: CreateChannelInput!): ChannelType!
+  createEvent(input: CreateEventInput!): CalendarEventType!
+  createGuestLink(input: CreateGuestLinkInput!): GuestLinkType!
+  createTask(input: CreateTaskInput!): TaskType!
+  createWorkspace(input: CreateWorkspaceInput!): WorkspaceType!
+  deleteMessage(messageId: ID!): Boolean!
+  editMessage(input: EditMessageInput!): MessageType!
+  inviteMember(input: InviteMemberInput!): WorkspaceMemberType!
+  login(input: LoginInput!): AuthPayload!
+  logout(input: RefreshTokenInput!): Boolean!
+  refreshToken(input: RefreshTokenInput!): AuthPayload!
+  register(input: RegisterInput!): AuthPayload!
+  resolveGuestLink(token: String!): ResolvedGuestLink!
+  sendMessage(input: SendMessageInput!): MessageType!
+  updateTaskStatus(input: UpdateTaskStatusInput!): TaskType!
+}
+
+type Query {
+  channels(workspaceId: ID!): [ChannelType!]!
+  events(from: String, to: String, workspaceId: ID!): [CalendarEventType!]!
+  me: UserType!
+  messages(input: MessagesQueryInput!): MessagePage!
+  myWorkspaces: [WorkspaceType!]!
+  tasks(workspaceId: ID!): [TaskType!]!
+  user(id: ID!): UserType!
+  workspace(id: ID!): WorkspaceType!
+}
+
+input RefreshTokenInput {
+  refreshToken: String!
+}
+
+input RegisterInput {
+  displayName: String!
+  email: String!
+  password: String!
+}
+
+type ResolvedGuestLink {
+  accessToken: String!
+  permission: GuestLinkPermission!
+  workspace: WorkspaceType!
+}
+
+input SendMessageInput {
+  body: String!
+  channelId: ID!
+  threadRootId: ID
+}
+
+type Subscription {
+  messageAdded(channelId: ID!): MessageType!
+}
+
+enum TaskStatus {
+  CANCELLED
+  DONE
+  IN_PROGRESS
+  TODO
+}
+
+type TaskType {
+  assigneeId: ID
+  createdAt: DateTime!
+  creatorId: ID!
+  description: String
+  dueAt: DateTime
+  id: ID!
+  status: TaskStatus!
+  title: String!
+  updatedAt: DateTime!
+  workspaceId: ID!
+}
+
+input UpdateTaskStatusInput {
+  status: TaskStatus!
+  taskId: ID!
+}
+
+type UserType {
+  avatarUrl: String
+  createdAt: DateTime!
+  displayName: String!
+  email: String!
+  id: ID!
+}
+
+type WorkspaceMemberType {
+  id: ID!
+  joinedAt: DateTime!
+  role: WorkspaceRole!
+  user: UserType!
+}
+
+enum WorkspaceRole {
+  ADMIN
+  GUEST
+  MEMBER
+  OWNER
+}
+
+type WorkspaceType {
+  createdAt: DateTime!
+  id: ID!
+  members: [WorkspaceMemberType!]
+  name: String!
+  slug: String!
+}

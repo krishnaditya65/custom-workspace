@@ -1,0 +1,55 @@
+# Single-instance Redis (no cluster/sentinel) - sufficient for the roles it
+# plays here (throttler storage, GraphQL subscription fan-out, sync
+# cross-instance pub/sub), all of which degrade to "single-instance
+# behavior" rather than hard-failing if Redis is briefly unavailable (see
+# docs/ARCHITECTURE.md, docs/DEPLOYMENT.md "Horizontal scaling"). For a
+# production cluster wanting HA Redis, replace this with a managed Redis or
+# the Bitnami/Redis Operator chart - not in scope here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: custom-workspace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: custom-workspace
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379

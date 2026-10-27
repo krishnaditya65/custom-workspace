@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/bench",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-client correctness + benchmark harness for the Go sync relay (apps/sync) and the API (apps/api)",
+  "type": "module",
+  "scripts": {
+    "verify": "node verify-sync.mjs",
+    "bench:sync": "node sync-latency.mjs",
+    "bench:sync-scale": "node sync-scale.mjs",
+    "bench:api": "node api-throughput.mjs",
+    "bench:all": "node run-all.mjs"
+  },
+  "dependencies": {
+    "yjs": "^13.6.20",
+    "y-websocket": "^2.0.4",
+    "ws": "^8.18.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}

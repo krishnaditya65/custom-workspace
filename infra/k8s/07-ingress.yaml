@@ -1,0 +1,84 @@
+# Host-based routing: three separate origins, matching how apps/web is
+# built (VITE_API_URL / VITE_WS_URL are full origins baked in at image
+# build time, not same-origin proxy paths - see apps/web/Dockerfile and
+# docs/DEPLOYMENT.md). Replace every REPLACE-ME.example.com hostname to
+# match whatever you passed as those build args.
+#
+# Written for the ingress-nginx controller (the most common default);
+# translate the annotations if you're on a different controller
+# (contour/traefik/gce/alb/...). TLS is assumed to be handled by your
+# controller/cert-manager setup - add a `tls:` block and the relevant
+# cert-manager annotations for your environment; none is included here (see
+# docs/DEPLOYMENT.md "What's deliberately out of scope here").
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workspace-web
+  namespace: custom-workspace
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: REPLACE-ME.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workspace-api
+  namespace: custom-workspace
+  annotations:
+    # /graphql serves both regular HTTP queries/mutations and the
+    # `messageAdded` subscription over graphql-ws - both need the same
+    # relaxed timeouts as apps/sync below since graphql-ws is also a
+    # long-lived WebSocket. ingress-nginx passes the Upgrade header through
+    # automatically; the timeouts are what actually need raising.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: api-REPLACE-ME.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 4000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workspace-sync
+  namespace: custom-workspace
+  annotations:
+    # Long-lived WebSocket connections (per-document CRDT sessions) - the
+    # default ~60s proxy-read-timeout would silently drop idle-but-open
+    # editor sessions.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: sync-REPLACE-ME.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sync
+                port:
+                  number: 1234
